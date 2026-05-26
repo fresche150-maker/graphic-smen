@@ -2,11 +2,12 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>График Смен</title>
   <meta name="theme-color" content="#6b46c1">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #f8f5ff;
@@ -14,131 +15,187 @@
       height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow: hidden; /* Запрещаем общий скролл экрана */
     }
+
     .header {
       background: linear-gradient(135deg, #6b46c1, #8b5cf6);
       color: white;
-      padding: 15px;
+      padding: 12px 15px;
       text-align: center;
-      font-size: 1.55rem;
+      font-size: 1.3rem;
       font-weight: bold;
       position: relative;
+      flex-shrink: 0;
     }
+
     #user-display-tag {
       position: absolute;
-      right: 15px;
+      right: 12px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       background: rgba(255,255,255,0.2);
-      padding: 4px 10px;
+      padding: 4px 8px;
       border-radius: 20px;
       cursor: pointer;
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
-    .tab-content { flex: 1; overflow-y: auto; padding: 15px; display: none; }
-    .tab-content.active { display: block; }
+
+    /* Главный контейнер вкладок */
+    .tab-content { 
+      flex: 1; 
+      display: none; 
+      flex-direction: column;
+      padding: 10px; 
+      overflow: hidden;
+    }
+    .tab-content.active { display: flex; }
     
+    /* Скролл разрешаем только внутри дополнительных вкладок */
+    #stats-tab, #templates-tab, #settings-tab {
+      overflow-y: auto;
+    }
+
     .tab-placeholder { text-align: center; color: #888; margin-top: 40px; }
 
-    .bottom-nav {
+    /* Календарный блок */
+    .calendar-container {
       display: flex;
-      background: white;
-      border-top: 1px solid #ddd;
-      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-    }
-    .nav-btn {
+      flex-direction: column;
       flex: 1;
-      padding: 12px 5px;
-      border: none;
-      background: none;
-      font-size: 1.4rem;
-      color: #666;
-      cursor: pointer;
+      height: 100%;
     }
-    .nav-btn.active { color: #6b46c1; }
+
+    .calendar-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
 
     .calendar-grid {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
-      gap: 6px;
+      gap: 4px;
+      flex: 1; /* Автоматически растягивается на всю оставшуюся высоту */
+      grid-template-rows: auto repeat(5, minmax(0, 1fr)); /* Равномерные строки */
     }
+
     .day-header { 
       text-align: center; 
       font-weight: bold; 
       color: #666; 
-      padding: 10px 0; 
+      padding: 6px 0; 
       background: #f0e6ff; 
-      border-radius: 8px;
+      border-radius: 6px;
+      font-size: 0.85rem;
     }
+
     .day {
       background: white;
-      border-radius: 12px;
-      padding: 8px 6px;
-      min-height: 120px;
+      border-radius: 8px;
+      padding: 4px;
       cursor: pointer;
       border: 1px solid #e5d9ff;
       display: flex;
       flex-direction: column;
+      justify-content: flex-start;
+      overflow: hidden;
       user-select: none;
       -webkit-user-select: none;
     }
-    .day.today { border: 3px solid #6b46c1; background: #f3e8ff; }
-    .day-number { font-weight: bold; font-size: 1.15rem; margin-bottom: 6px; }
+    .day.today { border: 2px solid #6b46c1; background: #f3e8ff; }
+    .day-number { font-weight: bold; font-size: 0.95rem; margin-bottom: 2px; }
 
+    /* Отображение смен внутри ячеек */
     .shift {
-      margin: 4px 0;
-      padding: 6px 8px;
-      border-radius: 8px;
+      margin: 1px 0;
+      padding: 2px 4px;
+      border-radius: 4px;
       background: #6b46c1;
       color: white;
-      font-size: 0.8rem;
+      font-size: 0.68rem;
       text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .shift.day-off {
       background: #fbbf24;
       color: #111827;
     }
     .shift-comment, .day-note {
-      font-size: 0.72rem;
-      opacity: 0.95;
-      margin-top: 3px;
-      font-style: italic;
+      font-size: 0.6rem;
+      opacity: 0.9;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .shift-hours {
-      font-weight: bold;
-      display: block;
-      font-size: 0.75rem;
-      margin-top: 1px;
+      font-size: 0.6rem;
+      opacity: 0.8;
+      display: inline-block;
+      margin-left: 2px;
     }
 
-    /* Админ-панель */
+    /* Нижняя навигация */
+    .bottom-nav {
+      display: flex;
+      background: white;
+      border-top: 1px solid #ddd;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+      flex-shrink: 0;
+      padding-bottom: env(safe-area-inset-bottom); /* Учет челки/полосы на iPhone */
+    }
+    .nav-btn {
+      flex: 1;
+      padding: 14px 5px;
+      border: none;
+      background: none;
+      font-size: 1.3rem;
+      color: #666;
+      cursor: pointer;
+    }
+    .nav-btn.active { color: #6b46c1; }
+
+    /* Панель администратора */
     .admin-panel {
-      margin-top: 20px;
+      margin-top: 15px;
       background: white;
       border: 2px dashed #ef4444;
-      border-radius: 16px;
-      padding: 15px;
-      display: none;
+      border-radius: 12px;
+      padding: 12px;
     }
     .user-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px;
+      padding: 8px 0;
       border-bottom: 1px solid #eee;
     }
     .user-item:last-child { border-bottom: none; }
     .btn-delete-user {
-      background: #ef4444;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.85rem;
+      background: #ef4444; color: white; border: none;
+      padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;
     }
 
-    /* Модалка входа */
+    /* Модальные окна */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6); display: none;
+      align-items: center; justify-content: center; z-index: 1000;
+      padding: 15px;
+    }
+    .modal-box {
+      background: white; width: 100%; max-width: 380px;
+      border-radius: 16px; padding: 20px; max-height: 90vh; overflow-y: auto;
+    }
+
     #login-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: #f8f5ff; z-index: 2000;
@@ -150,10 +207,10 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
-      getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, getDocs
+      getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Конфигурация из Firebase Console
+    // Твоя конфигурация из Firebase Console
     const firebaseConfig = {
       apiKey: "AIzaSyAZqgL23eZsIdcQ4k6T-0Xw3Y2tL3mm6d8",
       authDomain: "graphic-smen.firebaseapp.com",
@@ -192,20 +249,17 @@
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('user-display-tag').textContent = window.currentUser;
         
-        // Показываем админку ТОЛЬКО если вошел Vladislav (регистр не важен)
         if (window.currentUser.toLowerCase() === 'vladislav') {
           document.getElementById('admin-panel-block').style.display = 'block';
           listenToAllUsers();
         } else {
           document.getElementById('admin-panel-block').style.display = 'none';
         }
-
         listenToCloudData();
       }
     }
 
     function setupNameInputListener() {
-      // Отслеживаем ввод имени: если вводят Vladislav, показываем поле пароля
       const nameInput = document.getElementById('username-input');
       if (nameInput) {
         nameInput.addEventListener('input', (e) => {
@@ -225,7 +279,6 @@
       
       if (!nameInput) { alert("Пожалуйста, введите имя!"); return; }
       
-      // Проверка пароля только для администратора
       if (nameInput.toLowerCase() === 'vladislav') {
         if (passInput !== 'fresche150') {
           alert("Неверный пароль администратора!");
@@ -236,8 +289,6 @@
       window.currentUser = nameInput;
       localStorage.setItem('app_user_name', nameInput);
       checkAuth();
-      
-      // Сбрасываем поле пароля после успешного входа
       document.getElementById('password-input').value = '';
     }
 
@@ -249,10 +300,8 @@
       }
     }
 
-    // Живая синхронизация с облаком для текущего пользователя
     function listenToCloudData() {
       const userDocRef = doc(db, "users", window.currentUser.toLowerCase());
-      
       onSnapshot(userDocRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -269,18 +318,15 @@
       });
     }
 
-    // Получение списка всех пользователей базы для Админа
     function listenToAllUsers() {
       const usersCollection = collection(db, "users");
       onSnapshot(usersCollection, (querySnapshot) => {
         const listContainer = document.getElementById('admin-users-list');
         listContainer.innerHTML = '';
-        
         if (querySnapshot.empty) {
-          listContainer.innerHTML = '<p style="color:#888; font-size:0.9rem;">Пользователей в базе нет</p>';
+          listContainer.innerHTML = '<p style="color:#888; font-size:0.85rem;">Пользователей нет</p>';
           return;
         }
-
         querySnapshot.forEach((docSnap) => {
           const userData = docSnap.data();
           const userId = docSnap.id; 
@@ -291,8 +337,8 @@
           item.className = 'user-item';
           item.innerHTML = `
             <div>
-              <strong style="text-transform: capitalize;">${originalName}</strong> 
-              <span style="color:#666; font-size:0.8rem;">(Записей: ${shiftCount})</span>
+              <strong style="text-transform: capitalize; font-size:0.9rem;">${originalName}</strong> 
+              <span style="color:#666; font-size:0.75rem;">(${shiftCount})</span>
             </div>
             <button class="btn-delete-user" onclick="deleteUserFromCloud('${userId}', '${originalName}')">Удалить</button>
           `;
@@ -301,25 +347,13 @@
       });
     }
 
-    // Функция удаления пользователя из Firestore
     window.deleteUserFromCloud = async function(userId, readableName) {
-      if (userId === 'vladislav') {
-        alert("Вы не можете удалить самого себя (главного администратора)!");
-        return;
-      }
-
-      if (confirm(`🚨 ВНИМАНИЕ!\nВы действительно хотите навсегда удалить пользователя "${readableName}" и все его смены из облака?`)) {
-        try {
-          await deleteDoc(doc(db, "users", userId));
-          alert(`Пользователь ${readableName} успешно удален.`);
-        } catch (error) {
-          console.error("Ошибка при удалении:", error);
-          alert("Не удалось удалить пользователя. Проверьте интернет-соединение.");
-        }
+      if (userId === 'vladislav') { alert("Себя удалить нельзя!"); return; }
+      if (confirm(`Удалить пользователя "${readableName}" и все его данные из облака?`)) {
+        try { await deleteDoc(doc(db, "users", userId)); } catch (e) { alert("Ошибка удаления!"); }
       }
     }
 
-    // Отправка данных в облако Firebase
     async function uploadDataToCloud() {
       if (!window.currentUser) return;
       const userDocRef = doc(db, "users", window.currentUser.toLowerCase());
@@ -330,23 +364,20 @@
           dayNotes: window.dayNotes,
           lastUpdated: new Date().toISOString()
         }, { merge: true });
-      } catch (e) {
-        console.error("Ошибка синхронизации: ", e);
-        alert("Ошибка сохранения в облако!");
-      }
+      } catch (e) { console.error(e); }
     }
 
     window.calculateHours = function(start, end) {
-      if (!start || !end) return 0;
+      if (!start || !end) return '';
       const [sH, sM] = start.split(':').map(Number);
       const [eH, eM] = end.split(':').map(Number);
       let startMinutes = sH * 60 + sM;
       let endMinutes = eH * 60 + eM;
       if (endMinutes <= startMinutes) endMinutes += 24 * 60;
-      const diffMinutes = endMinutes - startMinutes;
-      const hours = Math.floor(diffMinutes / 60);
-      const mins = diffMinutes % 60;
-      return mins > 0 ? `${hours}ч ${mins}м` : `${hours} ч`;
+      const diff = endMinutes - startMinutes;
+      const h = Math.floor(diff / 60);
+      const m = diff % 60;
+      return m > 0 ? `${h}ч ${m}м` : `${h}ч`;
     }
 
     window.switchTab = function(n) {
@@ -407,18 +438,15 @@
         let html = `<div class="day${isToday}" onclick="showDay('${dateStr}')"><div class="day-number">${day}</div>`;
         
         dayShifts.forEach(shift => {
-          const isOff = shift.type === 'off';
-          if (isOff) {
-            html += `<div class="shift day-off">🌴 Выходной`;
+          if (shift.type === 'off') {
+            html += `<div class="shift day-off">🌴 Вых</div>`;
           } else {
             const duration = window.calculateHours(shift.start, shift.end);
-            html += `<div class="shift">${shift.start} - ${shift.end}<span class="shift-hours">(${duration})</span>`;
+            html += `<div class="shift">${shift.start}<span class="shift-hours">(${duration})</span></div>`;
           }
-          if (shift.comment) html += `<div class="shift-comment">${shift.comment}</div>`;
-          html += `</div>`;
         });
 
-        if (note) html += `<div class="day-note" style="color:#6b46c1; font-weight: bold;">📝 ${note}</div>`;
+        if (note) html += `<div class="day-note" style="color:#6b46c1; text-align:center;">📝</div>`;
         html += `</div>`;
         grid.innerHTML += html;
       }
@@ -426,7 +454,7 @@
 
     window.showDay = function(date) {
       window.currentViewingDate = date;
-      document.getElementById('day-title').textContent = `Смены на ${date}`;
+      document.getElementById('day-title').textContent = `Смены: ${date}`;
       
       const note = window.dayNotes[date];
       const noteText = document.getElementById('day-note-text');
@@ -445,20 +473,20 @@
       
       let html = '';
       if (dayShifts.length === 0) {
-        html = '<p style="text-align:center; color:#888; padding:20px 0;">Смен пока нет</p>';
+        html = '<p style="text-align:center; color:#888; padding:15px 0; font-size:0.9rem;">Смен нет</p>';
       } else {
         dayShifts.forEach((shift) => {
           const globalIdx = window.shifts.findIndex(s => s.date === shift.date && s.start === shift.start && s.end === shift.end && s.comment === shift.comment && s.type === shift.type);
           const isOff = shift.type === 'off';
-          const duration = isOff ? '' : ` — (${window.calculateHours(shift.start, shift.end)})`;
+          const duration = isOff ? '' : ` (${window.calculateHours(shift.start, shift.end)})`;
           
           html += `
-            <div class="shift ${isOff ? 'day-off' : ''}" style="margin-bottom:10px; text-align:left; padding:12px; position:relative;">
-              <strong>${isOff ? '🌴 Выходной' : `${shift.start} — ${shift.end}${duration}`}</strong><br>
-              ${shift.comment ? `<small>${shift.comment}</small>` : ''}
-              <div style="position:absolute; right:10px; top:8px; display:flex; gap:5px;">
-                <button onclick="editShift(${globalIdx})" style="background:#e5e7eb; color:#333; border:none; width:28px; height:28px; border-radius:50%; font-size:14px; cursor:pointer;">✏️</button>
-                <button onclick="deleteShift(${globalIdx})" style="background:#ef4444; color:white; border:none; width:28px; height:28px; border-radius:50%; font-size:14px; cursor:pointer;">✕</button>
+            <div class="shift ${isOff ? 'day-off' : ''}" style="margin-bottom:8px; text-align:left; padding:10px; position:relative; white-space:normal; font-size:0.85rem;">
+              <strong>${isOff ? '🌴 Выходной' : `${shift.start} — ${shift.end}${duration}`}</strong>
+              ${shift.comment ? `<br><small style="font-style:italic;">${shift.comment}</small>` : ''}
+              <div style="position:absolute; right:8px; top:6px; display:flex; gap:6px;">
+                <button onclick="editShift(${globalIdx})" style="background:#e5e7eb; border:none; width:26px; height:26px; border-radius:50%; cursor:pointer;">✏️</button>
+                <button onclick="deleteShift(${globalIdx})" style="background:#ef4444; color:white; border:none; width:26px; height:26px; border-radius:50%; cursor:pointer;">✕</button>
               </div>
             </div>`;
         });
@@ -478,8 +506,7 @@
       document.getElementById('shift-comment').value = shift.comment || '';
       
       window.setShiftType(shift.type || 'shift');
-      
-      document.getElementById('modal-type-title').textContent = "Редактировать запись";
+      document.getElementById('modal-type-title').textContent = "Редактировать";
       document.getElementById('add-modal').style.display = 'flex';
     }
 
@@ -494,7 +521,6 @@
       let shiftData = { date, type: window.currentSelectedType, comment: comment || null };
       
       if (window.currentSelectedType === 'shift') {
-        if (!start || !end) { alert("Заполните время начала и конца!"); return; }
         shiftData.start = start;
         shiftData.end = end;
       } else {
@@ -525,62 +551,41 @@
 
     window.editDayNote = function() {
       const currentNote = window.dayNotes[window.currentViewingDate] || '';
-      const newNote = prompt("Введите заметку (комментарий) к этому дню:", currentNote);
+      const newNote = prompt("Заметка к дню:", currentNote);
       if (newNote !== null) {
-        if (newNote.trim() === "") {
-          delete window.dayNotes[window.currentViewingDate];
-        } else {
-          window.dayNotes[window.currentViewingDate] = newNote.trim();
-        }
+        if (newNote.trim() === "") delete window.dayNotes[window.currentViewingDate];
+        else window.dayNotes[window.currentViewingDate] = newNote.trim();
         uploadDataToCloud();
       }
     }
 
     window.deleteDayNote = function() {
-      if (confirm("Удалить заметку к этому дню?")) {
+      if (confirm("Удалить заметку?")) {
         delete window.dayNotes[window.currentViewingDate];
         uploadDataToCloud();
       }
     }
 
     window.deleteShift = function(globalIndex) {
-      if (globalIndex === -1) return;
-      if (confirm('Удалить эту запись?')) {
+      if (confirm('Удалить запись?')) {
         window.shifts.splice(globalIndex, 1);
         uploadDataToCloud();
       }
     }
 
-    window.closeAddModal = function() {
-      document.getElementById('add-modal').style.display = 'none';
-      window.editingShiftIdx = null;
-    }
-
-    window.closeDayModal = function() {
-      document.getElementById('day-modal').style.display = 'none';
-    }
-
-    window.prevMonth = function() {
-      window.currentDate.setMonth(window.currentDate.getMonth() - 1);
-      window.renderCalendar();
-    }
-
-    window.newMonth = function() {
-      window.currentDate.setMonth(window.currentDate.getMonth() + 1);
-      window.renderCalendar();
-    }
+    window.closeAddModal = function() { document.getElementById('add-modal').style.display = 'none'; }
+    window.closeDayModal = function() { document.getElementById('day-modal').style.display = 'none'; }
+    window.prevMonth = function() { window.currentDate.setMonth(window.currentDate.getMonth() - 1); renderCalendar(); }
+    window.newMonth = function() { window.currentDate.setMonth(window.currentDate.getMonth() + 1); renderCalendar(); }
 
     function setupSwipeListeners() {
       const calendarTab = document.getElementById('calendar-tab');
-      calendarTab.addEventListener('touchstart', e => {
-        touchStartX = e.changedTouches[0].screenX;
-      }, {passive: true});
-
+      calendarTab.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
       calendarTab.addEventListener('touchend', e => {
         touchEndX = e.changedTouches[0].screenX;
-        const swipeDistance = touchEndX - touchStartX;
-        if (swipeDistance > 60) prevMonth();
-        else if (swipeDistance < -60) window.newMonth();
+        const diff = touchEndX - touchStartX;
+        if (diff > 60) prevMonth();
+        else if (diff < -60) window.newMonth();
       }, {passive: true});
     }
   </script>
@@ -593,50 +598,50 @@
   </div>
 
   <div id="login-overlay" style="display:none;">
-    <div style="background:white; width:100%; max-width:360px; padding:30px; border-radius:20px; text-align:center; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
-      <h2 style="color:#6b46c1; margin-bottom:10px;">Вход в график</h2>
-      <p style="color:#777; font-size:0.9rem; margin-bottom:20px;">Введите имя, чтобы загрузить персональный календарь</p>
+    <div style="background:white; width:100%; max-width:340px; padding:25px; border-radius:16px; text-align:center; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+      <h3 style="color:#6b46c1; margin-bottom:8px;">Вход в график</h3>
+      <p style="color:#777; font-size:0.85rem; margin-bottom:15px;">Введите имя для загрузки календаря</p>
       
       <input type="text" id="username-input" placeholder="Ваше имя" 
-             style="width:100%; padding:14px; border:1px solid #ddd; border-radius:12px; font-size:1.1rem; text-align:center; margin-bottom:15px; outline:none;">
+             style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; font-size:1rem; text-align:center; margin-bottom:12px; outline:none;">
       
       <input type="password" id="password-input" placeholder="Пароль администратора" 
-             style="width:100%; padding:14px; border:1px solid #ddd; border-radius:12px; font-size:1.1rem; text-align:center; margin-bottom:15px; outline:none; display:none;">
+             style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; font-size:1rem; text-align:center; margin-bottom:12px; outline:none; display:none;">
 
-      <button onclick="loginUser()" style="width:100%; background:#6b46c1; color:white; border:none; padding:14px; border-radius:12px; font-size:1.1rem; font-weight:bold; cursor:pointer;">
+      <button onclick="loginUser()" style="width:100%; background:#6b46c1; color:white; border:none; padding:12px; border-radius:10px; font-size:1rem; font-weight:bold; cursor:pointer;">
         Войти
       </button>
     </div>
   </div>
 
   <div id="calendar-tab" class="tab-content active" style="touch-action: pan-y;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-      <button onclick="prevMonth()" style="font-size:1.8rem; background:none; border:none; cursor:pointer; padding: 0 10px;">←</button>
-      <h2 id="month-title" style="color:#6b46c1; text-transform: capitalize;"></h2>
-      <button onclick="window.newMonth()" style="font-size:1.8rem; background:none; border:none; cursor:pointer; padding: 0 10px;">→</button>
+    <div class="calendar-container">
+      <div class="calendar-nav">
+        <button onclick="prevMonth()" style="font-size:1.5rem; background:none; border:none; cursor:pointer; padding: 0 15px;">←</button>
+        <h3 id="month-title" style="color:#6b46c1; text-transform: capitalize; font-size: 1.15rem;"></h3>
+        <button onclick="window.newMonth()" style="font-size:1.5rem; background:none; border:none; cursor:pointer; padding: 0 15px;">→</button>
+      </div>
+      <div class="calendar-grid" id="calendar-grid"></div>
     </div>
-    <div class="calendar-grid" id="calendar-grid"></div>
   </div>
 
   <div id="stats-tab" class="tab-content">
-    <h2>Статистика</h2>
+    <h3>Статистика</h3>
     <p class="tab-placeholder">Здесь будет подсчет часов и зарплаты...</p>
   </div>
 
   <div id="templates-tab" class="tab-content">
-    <h2>Шаблоны смен</h2>
+    <h3>Шаблоны смен</h3>
     <p class="tab-placeholder">Здесь можно будет создавать быстрые шаблоны...</p>
   </div>
 
   <div id="settings-tab" class="tab-content">
-    <h2>Настройки</h2>
-    <p class="tab-placeholder">Настройки PWA, экспорт и импорт данных...</p>
+    <h3>Настройки</h3>
+    <p class="tab-placeholder">Настройки PWA, экспорт данных...</p>
     
-    <div class="admin-panel" id="admin-panel-block">
-      <h3 style="color:#ef4444; margin-bottom:10px; display:flex; align-items:center; gap:5px;">🛡️ Панель администратора</h3>
-      <p style="font-size:0.85rem; color:#666; margin-bottom:15px;">Список активных пользователей в облаке Firestore. Вы можете удалить любого из них.</p>
-      <div id="admin-users-list" style="display:flex; flex-direction:column; gap:8px;">
-        </div>
+    <div class="admin-panel" id="admin-panel-block" style="display:none;">
+      <h4 style="color:#ef4444; margin-bottom:8px;">🛡️ Панель администратора</h4>
+      <div id="admin-users-list" style="display:flex; flex-direction:column; gap:6px;"></div>
     </div>
   </div>
 
@@ -647,59 +652,51 @@
     <button onclick="switchTab(3)" class="nav-btn">⚙️</button>
   </nav>
 
-  <div id="add-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:1000;">
-    <div style="background:white; width:92%; max-width:420px; border-radius:20px; padding:25px;">
+  <div id="add-modal" class="modal-overlay">
+    <div class="modal-box">
       <h3 id="modal-type-title">Новая запись</h3>
-      <input type="date" id="shift-date" style="width:100%; padding:12px; margin:12px 0; border:1px solid #ccc; border-radius:10px;">
+      <input type="date" id="shift-date" style="width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:8px;">
       
-      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <button id="type-shift-btn" onclick="setShiftType('shift')" style="flex:1; padding:10px; border-radius:10px; border:2px solid #6b46c1; background:#6b46c1; color:white; cursor:pointer; font-weight:bold;">Рабочая смена</button>
-        <button id="type-off-btn" onclick="setShiftType('off')" style="flex:1; padding:10px; border-radius:10px; border:2px solid #ccc; background:none; color:#333; cursor:pointer; font-weight:bold;">Выходной</button>
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <button id="type-shift-btn" onclick="setShiftType('shift')" style="flex:1; padding:10px; border-radius:8px; border:2px solid #6b46c1; font-weight:bold;">Смена</button>
+        <button id="type-off-btn" onclick="setShiftType('off')" style="flex:1; padding:10px; border-radius:8px; border:2px solid #ccc; font-weight:bold;">Выходной</button>
       </div>
 
-      <div id="time-inputs-block" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin:15px 0;">
+      <div id="time-inputs-block" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom:12px;">
         <div>
-          <label>Начало</label><br>
-          <input type="time" id="start-time" value="08:00" style="width:100%; padding:12px; border:1px solid #ccc; border-radius:10px;">
+          <label style="font-size:0.8rem;">Начало</label>
+          <input type="time" id="start-time" value="08:00" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px;">
         </div>
         <div>
-          <label>Конец</label><br>
-          <input type="time" id="end-time" value="17:00" style="width:100%; padding:12px; border:1px solid #ccc; border-radius:10px;">
+          <label style="font-size:0.8rem;">Конец</label>
+          <input type="time" id="end-time" value="17:00" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px;">
         </div>
       </div>
 
-      <label>Комментарий</label>
-      <textarea id="shift-comment" placeholder="Комментарий..." 
-                style="width:100%; padding:12px; border:1px solid #ccc; border-radius:10px; min-height:70px; margin-top:8px;"></textarea>
+      <textarea id="shift-comment" placeholder="Комментарий..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; min-height:60px;"></textarea>
 
-      <button onclick="saveShift()" style="margin-top:20px; background:#6b46c1; color:white; padding:15px; width:100%; border:none; border-radius:12px; font-size:1.1rem; cursor:pointer;">
-        Сохранить
-      </button>
-      <button onclick="closeAddModal()" style="margin-top:10px; background:#e5e7eb; padding:15px; width:100%; border:none; border-radius:12px; cursor:pointer;">
-        Отмена
-      </button>
+      <button onclick="saveShift()" style="margin-top:15px; background:#6b46c1; color:white; padding:12px; width:100%; border:none; border-radius:10px; font-weight:bold;">Сохранить</button>
+      <button onclick="closeAddModal()" style="margin-top:8px; background:#e5e7eb; padding:12px; width:100%; border:none; border-radius:10px;">Отмена</button>
     </div>
   </div>
 
-  <div id="day-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:1000;">
-    <div style="background:white; width:92%; max-width:420px; border-radius:20px; padding:20px; max-height:85vh; overflow-y:auto;">
-      <h3 id="day-title" style="margin-bottom:15px;"></h3>
+  <div id="day-modal" class="modal-overlay">
+    <div class="modal-box">
+      <h3 id="day-title" style="margin-bottom:12px;"></h3>
       
-      <div id="day-note-section" style="margin-bottom:20px; background:#f3e8ff; padding:12px; border-radius:12px;">
-        <strong>Заметка ко дню:</strong>
-        <div id="day-note-text" style="margin:8px 0; white-space: pre-wrap; color: #555; font-style: italic;">Заметок нет</div>
-        <button id="add-note-btn" onclick="editDayNote()" style="background:#6b46c1; color:white; border:none; padding:8px 14px; border-radius:8px; font-size:0.9rem; cursor:pointer;">Добавить / Изменить</button>
-        <button id="del-note-btn" onclick="deleteDayNote()" style="background:#ef4444; color:white; border:none; padding:8px 14px; border-radius:8px; font-size:0.9rem; margin-left:8px; cursor:pointer; display:none;">Удалить</button>
+      <div style="margin-bottom:15px; background:#f3e8ff; padding:10px; border-radius:10px; font-size:0.85rem;">
+        <strong>Заметка:</strong>
+        <div id="day-note-text" style="margin:6px 0; white-space: pre-wrap; color: #555; font-style: italic;">Заметок нет</div>
+        <button onclick="editDayNote()" style="background:#6b46c1; color:white; border:none; padding:6px 10px; border-radius:6px; font-size:0.75rem;">Изменить</button>
+        <button id="del-note-btn" onclick="deleteDayNote()" style="background:#ef4444; color:white; border:none; padding:6px 10px; border-radius:6px; font-size:0.75rem; margin-left:6px; display:none;">Удалить</button>
       </div>
 
       <div id="shifts-list"></div>
       
-      <button onclick="openAddModalFromDay()" style="margin-top:15px; background:#6b46c1; color:white; padding:14px; width:100%; border:none; border-radius:12px; cursor:pointer; font-weight: bold;">
-        + Добавить смену / Выходной
+      <button onclick="openAddModalFromDay()" style="margin-top:12px; background:#6b46c1; color:white; padding:12px; width:100%; border:none; border-radius:10px; font-weight: bold; font-size:0.95rem;">
+        + Добавить запись
       </button>
-      <button onclick="closeDayModal()" style="margin-top:8px; background:#e5e7eb; padding:14px; width:100%; border:none; border-radius:12px; cursor:pointer;">
-        Закрыть
-      </button>
+      <button onclick="closeDayModal()" style="margin-top:6px; background:#e5e7eb; padding:12px; width:100%; border:none; border-radius:10px;">Закрыть</button>
     </div>
   </div>
 

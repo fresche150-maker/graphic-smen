@@ -210,6 +210,7 @@
       getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+    // Твоя конфигурация из Firebase Console
     const firebaseConfig = {
       apiKey: "AIzaSyAZqgL23eZsIdcQ4k6T-0Xw3Y2tL3mm6d8",
       authDomain: "graphic-smen.firebaseapp.com",
@@ -438,7 +439,6 @@
         
         dayShifts.forEach(shift => {
           if (shift.type === 'off') {
-            /* ИЗМЕНЕНИЕ ЗДЕСЬ: сокращено до "🌴 Вых" */
             html += `<div class="shift day-off">🌴 Вых</div>`;
           } else {
             const duration = window.calculateHours(shift.start, shift.end);
@@ -482,7 +482,7 @@
           
           html += `
             <div class="shift ${isOff ? 'day-off' : ''}" style="margin-bottom:8px; text-align:left; padding:10px; position:relative; white-space:normal; font-size:0.85rem;">
-              <strong>${isOff ? '🌴 Выходной' : `${shift.start} — ${shift.end}${duration}`}</strong>
+              <strong>${isOff ? '🌴 Вых' : `${shift.start} — ${shift.end}${duration}`}</strong>
               ${shift.comment ? `<br><small style="font-style:italic;">${shift.comment}</small>` : ''}
               <div style="position:absolute; right:8px; top:6px; display:flex; gap:6px;">
                 <button onclick="editShift(${globalIdx})" style="background:#e5e7eb; border:none; width:26px; height:26px; border-radius:50%; cursor:pointer;">✏️</button>

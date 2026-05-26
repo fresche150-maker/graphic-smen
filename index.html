@@ -83,7 +83,7 @@
       grid-template-columns: repeat(7, 1fr);
       gap: 4px;
       grid-template-rows: auto;
-      auto-rows: minmax(70px, auto); /* Строки гибки и расширяются под контент как на IMG_3082 */
+      auto-rows: minmax(70px, auto); /* Строки гибки и расширяются под контент */
     }
 
     .day-header { 
@@ -133,7 +133,7 @@
     .shift-hours {
       font-size: 0.65rem;
       opacity: 0.85;
-      display: block; /* Выносим подсчет часов на новую строчку внутри плашки */
+      display: block; /* Выносим подсчет часов на новую строчку */
       margin-top: 1px;
     }
     .day-note {
@@ -245,17 +245,13 @@
       setupSwipeListeners();
     });
 
-    onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        document.getElementById('login-overlay').style.display = 'flex';
-        return;
-      }
-
+    // Единая функция для финальной авторизации в интерфейсе
+    function initUserSession(email) {
+      window.currentUser = email;
       document.getElementById('login-overlay').style.display = 'none';
-      window.currentUser = user.email;
-      document.getElementById('user-display-tag').textContent = user.email.split('@')[0]; // Делаем имя в углу аккуратным
+      document.getElementById('user-display-tag').textContent = email.split('@')[0];
 
-      if (user.email === ADMIN_EMAIL) {
+      if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
         document.getElementById('admin-panel-block').style.display = 'block';
         listenToAllUsers();
       } else {
@@ -263,27 +259,62 @@
       }
 
       listenToCloudData();
+    }
+
+    // Следим за статусом входа при загрузке страницы
+    onAuthStateChanged(auth, (user) => {
+      if (user && user.email === ADMIN_EMAIL) {
+        // Если в системе остался сохранен Админ
+        initUserSession(user.email);
+      } else {
+        // Если админ не входил, проверяем, нет ли сохраненного обычного юзера
+        const localUser = localStorage.getItem('graphic_local_user');
+        if (localUser) {
+          initUserSession(localUser);
+        } else {
+          document.getElementById('login-overlay').style.display = 'flex';
+        }
+      }
     });
 
+    // Умная кнопка входа
     window.loginUser = async function() {
-      const email = document.getElementById('username-input').value.trim();
+      const inputName = document.getElementById('username-input').value.trim();
       const password = document.getElementById('password-input').value.trim();
 
-      if (!email || !password) {
-        alert("Введите email и пароль");
+      if (!inputName) {
+        alert("Введите имя или email");
         return;
       }
 
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-      } catch (e) {
-        alert("Ошибка входа");
-        console.error(e);
+      const lowerInput = inputName.toLowerCase();
+
+      // 1. ЛОГИКА ДЛЯ АДМИНА (Нужен пароль)
+      if (lowerInput === 'admin' || lowerInput === ADMIN_EMAIL.toLowerCase()) {
+        if (!password) {
+          alert("Для входа администратора требуется ввести пароль!");
+          return;
+        }
+        try {
+          const email = inputName.includes('@') ? inputName : ADMIN_EMAIL;
+          await signInWithEmailAndPassword(auth, email, password);
+        } catch (e) {
+          alert("Неверный пароль администратора");
+          console.error(e);
+        }
+      } 
+      // 2. ЛОГИКА ДЛЯ ПОЛЬЗОВАТЕЛЕЙ (Пароль игнорируется, вход по имени)
+      else {
+        const userEmail = inputName.includes('@') ? inputName : `${inputName}@graphic-smen.app`;
+        localStorage.setItem('graphic_local_user', userEmail);
+        initUserSession(userEmail);
       }
     }
 
     window.logoutUser = async function() {
-      if (confirm(`Выйти из аккаунта ${window.currentUser}?`)) {
+      const shortName = window.currentUser.split('@')[0];
+      if (confirm(`Выйти из аккаунта ${shortName}?`)) {
+        localStorage.removeItem('graphic_local_user');
         await signOut(auth);
         location.reload();
       }
@@ -589,12 +620,12 @@
   <div id="login-overlay" style="display:none;">
     <div style="background:white; width:100%; max-width:340px; padding:25px; border-radius:16px; text-align:center; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
       <h3 style="color:#6b46c1; margin-bottom:8px;">Вход в график</h3>
-      <p style="color:#777; font-size:0.85rem; margin-bottom:15px;">Введите email и пароль для загрузки календаря</p>
+      <p style="color:#777; font-size:0.85rem; margin-bottom:15px;">Введите ваше имя для загрузки календаря</p>
       
-      <input type="text" id="username-input" placeholder="Email" 
+      <input type="text" id="username-input" placeholder="Имя" 
              style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; font-size:1rem; text-align:center; margin-bottom:12px; outline:none;">
       
-      <input type="password" id="password-input" placeholder="Пароль" 
+      <input type="password" id="password-input" placeholder="Пароль (только для Админа)" 
              style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; font-size:1rem; text-align:center; margin-bottom:12px; outline:none; display:block;">
 
       <button onclick="loginUser()" style="width:100%; background:#6b46c1; color:white; border:none; padding:12px; border-radius:10px; font-size:1rem; font-weight:bold; cursor:pointer;">

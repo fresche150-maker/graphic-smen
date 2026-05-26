@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>График Смен</title>
+  <title>Graphic Smen</title>
   <meta name="theme-color" content="#6b46c1">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -153,6 +153,52 @@
     .stat-card strong { font-size: 1.2rem; color: #6b46c1; }
     .stat-card.off strong { color: #fbbf24; }
 
+    /* Стили для конструктора шаблонов */
+    .template-form {
+      background: white;
+      padding: 15px;
+      border-radius: 12px;
+      border: 1px solid #e5d9ff;
+      margin-bottom: 15px;
+    }
+    .form-group {
+      margin-bottom: 10px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      color: #666;
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #e5d9ff;
+      border-radius: 8px;
+      font-size: 0.95rem;
+    }
+    .template-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: white;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #e5d9ff;
+      margin-bottom: 8px;
+    }
+    .template-btn {
+      background: #f3e8ff;
+      color: #6b46c1;
+      border: 1px solid #e5d9ff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
     .bottom-nav {
       display: flex;
       background: white;
@@ -259,8 +305,12 @@
     let touchStartX = 0;
     let touchEndX = 0;
 
+    // Глобальный массив шаблонов
+    window.customTemplates = JSON.parse(localStorage.getItem('graphic_templates')) || [];
+
     window.addEventListener('DOMContentLoaded', () => {
       setupSwipeListeners();
+      renderTemplatesTabList();
     });
 
     function initUserSession(email) {
@@ -428,6 +478,7 @@
       document.querySelectorAll('.nav-btn')[n].classList.add('active');
       if (n === 0) renderCalendar();
       if (n === 1) renderStats();
+      if (n === 2) renderTemplatesTabList();
     }
 
     window.setShiftType = function(type) {
@@ -573,6 +624,7 @@
       document.getElementById('end-time').value = shift.end || '17:00';
       document.getElementById('shift-comment').value = shift.comment || '';
       window.setShiftType(shift.type || 'shift');
+      renderModalTemplates(); // Отрисовываем кнопки шаблонов в окне
       document.getElementById('add-modal').style.display = 'flex';
     }
 
@@ -614,6 +666,7 @@
       document.getElementById('shift-date').value = window.currentViewingDate;
       document.getElementById('shift-comment').value = '';
       window.setShiftType('shift');
+      renderModalTemplates(); // Загружаем шаблоны перед открытием
       document.getElementById('add-modal').style.display = 'flex';
     }
 
@@ -632,7 +685,6 @@
     }
 
     function setupSwipeListeners() {
-      // Свайпы работают на вкладке календаря и на вкладке статистики
       ['calendar-tab', 'stats-tab'].forEach(tabId => {
         const tabEl = document.getElementById(tabId);
         if (!tabEl) return;
@@ -642,6 +694,85 @@
           const diff = touchEndX - touchStartX;
           if (diff > 60) prevMonth(); else if (diff < -60) window.newMonth();
         }, {passive: true});
+      });
+    }
+
+    /* --- ЛОГИКА КОНСТРУКТОРА ШАБЛОНОВ --- */
+    window.createNewTemplate = function(e) {
+      e.preventDefault();
+      const nameInput = document.getElementById('new-tpl-name');
+      const startInput = document.getElementById('new-tpl-start');
+      const endInput = document.getElementById('new-tpl-end');
+
+      const name = nameInput.value.trim();
+      const start = startInput.value;
+      const end = endInput.value;
+
+      if (!name || !start || !end) return;
+
+      window.customTemplates.push({ name, start, end });
+      localStorage.setItem('graphic_templates', JSON.stringify(window.customTemplates));
+
+      nameInput.value = '';
+      renderTemplatesTabList();
+    }
+
+    window.deleteTemplate = function(index) {
+      if (confirm('Удалить этот шаблон?')) {
+        window.customTemplates.splice(index, 1);
+        localStorage.setItem('graphic_templates', JSON.stringify(window.customTemplates));
+        renderTemplatesTabList();
+      }
+    }
+
+    function renderTemplatesTabList() {
+      const container = document.getElementById('tab-templates-list');
+      if (!container) return;
+
+      if (window.customTemplates.length === 0) {
+        container.innerHTML = '<p class="tab-placeholder" style="margin-top:10px;">У вас пока нет созданных шаблонов.</p>';
+        return;
+      }
+
+      container.innerHTML = '';
+      window.customTemplates.forEach((tpl, idx) => {
+        const div = document.createElement('div');
+        div.className = 'template-item';
+        div.innerHTML = `
+          <div>
+            <strong>${tpl.name}</strong>
+            <div style="font-size:0.8rem; color:#666;">${tpl.start} — ${tpl.end} (${window.calculateHours(tpl.start, tpl.end)})</div>
+          </div>
+          <button onclick="deleteTemplate(${idx})" style="background:none; border:none; color:#ef4444; font-size:1.1rem; cursor:pointer; padding:5px;">✕</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function renderModalTemplates() {
+      const block = document.getElementById('modal-templates-block');
+      const container = document.getElementById('modal-templates-container');
+      if (!block || !container) return;
+
+      if (window.customTemplates.length === 0) {
+        block.style.display = 'none';
+        return;
+      }
+
+      block.style.display = 'block';
+      container.innerHTML = '';
+
+      window.customTemplates.forEach(tpl => {
+        const btn = document.createElement('button');
+        btn.className = 'template-btn';
+        btn.type = 'button';
+        btn.textContent = `${tpl.name} (${tpl.start})`;
+        btn.onclick = () => {
+          window.setShiftType('shift');
+          document.getElementById('start-time').value = tpl.start;
+          document.getElementById('end-time').value = tpl.end;
+        };
+        container.appendChild(btn);
       });
     }
   </script>
@@ -685,8 +816,28 @@
   </div>
 
   <div id="templates-tab" class="tab-content">
-    <h3>📋 Шаблоны</h3>
-    <p class="tab-placeholder">Быстрые шаблоны смен...</p>
+    <h3 style="margin-bottom:15px; color:#6b46c1;">📋 Конструктор шаблонов</h3>
+    
+    <form class="template-form" onsubmit="createNewTemplate(event)">
+      <div class="form-group">
+        <label>Название шаблона</label>
+        <input type="text" id="new-tpl-name" placeholder="Например: Дневная, Ночь, Смена А" required>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <div class="form-group">
+          <label>Время начала</label>
+          <input type="time" id="new-tpl-start" value="08:00" required>
+        </div>
+        <div class="form-group">
+          <label>Время окончания</label>
+          <input type="time" id="new-tpl-end" value="17:00" required>
+        </div>
+      </div>
+      <button type="submit" style="width:100%; background:#6b46c1; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer; margin-top:5px;">+ Добавить шаблон</button>
+    </form>
+
+    <h4 style="margin: 10px 0 5px 2px; color:#6b46c1;">Созданные шаблоны:</h4>
+    <div id="tab-templates-list"></div>
   </div>
 
   <div id="settings-tab" class="tab-content">
@@ -708,6 +859,12 @@
     <div class="modal-box">
       <h3>Запись</h3>
       <input type="date" id="shift-date" style="width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:8px;">
+      
+      <div id="modal-templates-block" style="margin-bottom: 12px; display: none;">
+        <label style="font-size: 0.75rem; color: #666; display: block; margin-bottom: 5px;">Быстрый выбор:</label>
+        <div id="modal-templates-container" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+      </div>
+
       <div style="display: flex; gap: 8px; margin-bottom: 12px;">
         <button id="type-shift-btn" onclick="setShiftType('shift')" style="flex:1; padding:10px; border-radius:8px; border:2px solid #6b46c1; font-weight:bold;">Смена</button>
         <button id="type-off-btn" onclick="setShiftType('off')" style="flex:1; padding:10px; border-radius:8px; border:2px solid #ccc; font-weight:bold;">Выходной</button>

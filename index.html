@@ -210,7 +210,6 @@
       getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Твоя конфигурация из Firebase Console
     const firebaseConfig = {
       apiKey: "AIzaSyAZqgL23eZsIdcQ4k6T-0Xw3Y2tL3mm6d8",
       authDomain: "graphic-smen.firebaseapp.com",
@@ -439,6 +438,7 @@
         
         dayShifts.forEach(shift => {
           if (shift.type === 'off') {
+            /* ИЗМЕНЕНИЕ ЗДЕСЬ: сокращено до "🌴 Вых" */
             html += `<div class="shift day-off">🌴 Вых</div>`;
           } else {
             const duration = window.calculateHours(shift.start, shift.end);

@@ -209,6 +209,12 @@
     import { 
       getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     // Твоя конфигурация из Firebase Console
     const firebaseConfig = {
@@ -222,6 +228,7 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const auth = getAuth(app);
 
     window.currentDate = new Date();
     window.shifts = [];
@@ -229,73 +236,57 @@
     window.currentViewingDate = null;
     window.editingShiftIdx = null;
     window.currentSelectedType = 'shift';
-    window.currentUser = localStorage.getItem('app_user_name') || "";
+    window.currentUser = "";
+
+    const ADMIN_EMAIL = "admin@graphic-smen.app";
 
     let touchStartX = 0;
     let touchEndX = 0;
 
     window.addEventListener('DOMContentLoaded', () => {
-      checkAuth();
       setupSwipeListeners();
-      setupNameInputListener();
     });
 
-    function checkAuth() {
-      if (!window.currentUser) {
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
         document.getElementById('login-overlay').style.display = 'flex';
-        document.getElementById('password-input').style.display = 'none';
-        document.getElementById('username-input').value = '';
+        return;
+      }
+
+      document.getElementById('login-overlay').style.display = 'none';
+      window.currentUser = user.email;
+      document.getElementById('user-display-tag').textContent = user.email;
+
+      if (user.email === ADMIN_EMAIL) {
+        document.getElementById('admin-panel-block').style.display = 'block';
+        listenToAllUsers();
       } else {
-        document.getElementById('login-overlay').style.display = 'none';
-        document.getElementById('user-display-tag').textContent = window.currentUser;
-        
-        if (window.currentUser.toLowerCase() === 'vladislav') {
-          document.getElementById('admin-panel-block').style.display = 'block';
-          listenToAllUsers();
-        } else {
-          document.getElementById('admin-panel-block').style.display = 'none';
-        }
-        listenToCloudData();
+        document.getElementById('admin-panel-block').style.display = 'none';
+      }
+
+      listenToCloudData();
+    });
+
+    window.loginUser = async function() {
+      const email = document.getElementById('username-input').value.trim();
+      const password = document.getElementById('password-input').value.trim();
+
+      if (!email || !password) {
+        alert("Введите email и пароль");
+        return;
+      }
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (e) {
+        alert("Ошибка входа");
+        console.error(e);
       }
     }
 
-    function setupNameInputListener() {
-      const nameInput = document.getElementById('username-input');
-      if (nameInput) {
-        nameInput.addEventListener('input', (e) => {
-          const passwordField = document.getElementById('password-input');
-          if (e.target.value.trim().toLowerCase() === 'vladislav') {
-            passwordField.style.display = 'block';
-          } else {
-            passwordField.style.display = 'none';
-          }
-        });
-      }
-    }
-
-    window.loginUser = function() {
-      const nameInput = document.getElementById('username-input').value.trim();
-      const passInput = document.getElementById('password-input').value.trim();
-      
-      if (!nameInput) { alert("Пожалуйста, введите имя!"); return; }
-      
-      if (nameInput.toLowerCase() === 'vladislav') {
-        if (passInput !== 'fresche150') {
-          alert("Неверный пароль администратора!");
-          return;
-        }
-      }
-
-      window.currentUser = nameInput;
-      localStorage.setItem('app_user_name', nameInput);
-      checkAuth();
-      document.getElementById('password-input').value = '';
-    }
-
-    window.logoutUser = function() {
+    window.logoutUser = async function() {
       if (confirm(`Выйти из аккаунта ${window.currentUser}?`)) {
-        localStorage.removeItem('app_user_name');
-        window.currentUser = "";
+        await signOut(auth);
         location.reload();
       }
     }
@@ -348,7 +339,7 @@
     }
 
     window.deleteUserFromCloud = async function(userId, readableName) {
-      if (userId === 'vladislav') { alert("Себя удалить нельзя!"); return; }
+      if (userId === ADMIN_EMAIL.toLowerCase()) { alert("Себя удалить нельзя!"); return; }
       if (confirm(`Удалить пользователя "${readableName}" и все его данные из облака?`)) {
         try { await deleteDoc(doc(db, "users", userId)); } catch (e) { alert("Ошибка удаления!"); }
       }
@@ -600,13 +591,13 @@
   <div id="login-overlay" style="display:none;">
     <div style="background:white; width:100%; max-width:340px; padding:25px; border-radius:16px; text-align:center; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
       <h3 style="color:#6b46c1; margin-bottom:8px;">Вход в график</h3>
-      <p style="color:#777; font-size:0.85rem; margin-bottom:15px;">Введите имя для загрузки календаря</p>
+      <p style="color:#777; font-size:0.85rem; margin-bottom:15px;">Введите email и пароль для загрузки календаря</p>
       
-      <input type="text" id="username-input" placeholder="Ваше имя" 
+      <input type="text" id="username-input" placeholder="Email" 
              style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; font-size:1rem; text-align:center; margin-bottom:12px; outline:none;">
       
-      <input type="password" id="password-input" placeholder="Пароль администратора" 
-             style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; font-size:1rem; text-align:center; margin-bottom:12px; outline:none; display:none;">
+      <input type="password" id="password-input" placeholder="Пароль" 
+             style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; font-size:1rem; text-align:center; margin-bottom:12px; outline:none; display:block;">
 
       <button onclick="loginUser()" style="width:100%; background:#6b46c1; color:white; border:none; padding:12px; border-radius:10px; font-size:1rem; font-weight:bold; cursor:pointer;">
         Войти
@@ -659,7 +650,7 @@
       
       <div style="display: flex; gap: 8px; margin-bottom: 12px;">
         <button id="type-shift-btn" onclick="setShiftType('shift')" style="flex:1; padding:10px; border-radius:8px; border:2px solid #6b46c1; font-weight:bold;">Смена</button>
-        <button id="type-off-btn" onclick="setShiftType('off')" style="flex:1; padding:10px; border-radius:8px; border:2px solid #ccc; font-weight:bold;">Вых</button>
+        <button id="type-off-btn" onclick="setShiftType('off')" style="flex:1; padding:10px; border-radius:8px; border:2px solid #ccc; font-weight:bold;">Выходной</button>
       </div>
 
       <div id="time-inputs-block" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom:12px;">

@@ -787,8 +787,9 @@
       const mins = totalMinutes % 60;
       const timeStr = mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`;
 
-      const rate = window.viewedUserSettings || window.userSettings.hourlyRate || 0;
-      const currency = window.viewedUserSettings || window.userSettings.currency || 'UAH';
+      // ИСПРАВЛЕНО ТУТ: теперь свойства .hourlyRate и .currency берутся корректно
+      const rate = window.viewedUserSettings?.hourlyRate || window.userSettings.hourlyRate || 0;
+      const currency = window.viewedUserSettings?.currency || window.userSettings.currency || 'UAH';
       const totalHours = totalMinutes / 60;
       const earned = (totalHours * rate).toFixed(0);
 
